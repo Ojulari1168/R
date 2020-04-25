@@ -1,0 +1,294 @@
+---
+title: "continent capstone, asia,"
+author: "OJULARI_Maryam"
+date: "4/20/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+#Continent Asia(India, Japan, Korea). Importing the datasets for the countries and combining them
+
+KR = read.csv("KR-ok.csv")
+IN = read.csv("IN-ok.csv")
+JP = read.csv("JP-ok.csv")
+Asia = rbind(IN, JP, KR)
+```
+
+```{r}
+#TO CHECK FOR MISSING VALUES AND SHOWING A PLOT
+any(is.na(Asia))
+missmap(Asia, col=c("black", "blue"), legend=FALSE)
+```
+
+
+```{r}
+#showing the dimension, summary, and taking a glimpse of the Asia continent data
+dim(Asia)
+colnames(Asia)
+summary(Asia)
+glimpse(Asia)
+```
+
+#PREPROCESSING DATA AND ANALYSIS
+
+```{r}
+#these variables are removed from the data set because of their content will gfive litle or no information in the course ofnthe reseach
+Asia = Asia[, !(colnames(Asia) %in% c("thumbnail_link","description","assignable","video_id", "category_id"))]
+view(Asia)
+```
+
+```{r}
+qplot(y=category, data=Asia, color = I("purple"), geom = "bar") 
+```
+
+
+```{r}
+#Representing the Asian Data Set Category and their Views in a pie chart
+Asia1 = as.data.table(Asia)
+p = plot_ly(Asia1, labels = ~category, type = 'pie') %>%
+  layout(title = 'categories in Asia')
+p
+P2 = plot_ly(Asia1, labels = ~category, values = ~views, type = 'pie') %>%
+  layout(title = 'Views by Category in Asia')
+P2
+```
+
+
+```{r}
+#correlation between various variables
+videos = as.data.table(Asia)
+corrplot.mixed(corr = cor(Asia1[,c("views","likes","dislikes","comment_count"),with=F], method = "pearson"))
+```
+
+```{r}
+#most viewed channels plots in Asia
+ggplot(Asia1[,.N,by=channel_title][order(-N)][1:10],aes(reorder(channel_title,-N),N,fill=channel_title))+geom_bar(stat="identity")+guides(fill = "none")+theme(axis.text.x = element_text(angle = 30,hjust = 1))+  labs(title = " Trending channel titles in Asia")
+```
+
+```{r}
+hist(log(As$views,10))
+quantile(Asia1$views, probs = c(0.25,0.466,0.50,0.75, 0.92,0.99))
+hist(log(Asia$likes,10))
+quantile(Asia$likes, probs = c(0.25,0.466,0.50,0.75, 0.92,0.99))
+```
+
+```{r}
+#Relationship between title lenght of words(with/without space) and views
+Asia1[,"Word_len":= str_length(title)]
+ggplot(Asia1[,.N,keyby=Word_len],aes(Word_len,N,fill=N))+geom_bar(stat = "identity")+guides(fill="none")+labs(title="Title length in words")
+# Number of characters vs views
+qplot(NoC, Asia$views)
+# Number of tags vs views
+qplot(NoT, Asia$views)
+```
+
+```{r}
+qplot(y = category, views, data = Asia, geom = "point", color = I("purple") )
+#when rating is disable
+qplot(y = category, x = views, data = Asia, geom= "point", color = ratings_disabled) 
+#comment count disabled
+qplot(y = category, x = views, data = Asia, geom = "point", color = comments_disabled )
+```
+
+```{r}
+#Extracting trending dates, publish dates, and counts for analysis
+Asia$trending_date = lapply(Asia$trending_date, function(w) paste(20, w, sep=''))
+Asia$trending_date = lapply(Asia$trending_date, function(w) gsub("\\.", "/", w))
+Asia$publish_time = as.POSIXlt(Asia$publish_time)
+
+# Publish
+P_years = substring(Asia$publish_time, 1, 4)
+P_months = substring(Asia$publish_time, 6, 7)
+P_days = substring(Asia$publish_time, 9, 10)
+
+#Trending
+T_years = substring(Asia$trending_date, 1, 4)
+T_months = substring(Asia$trending_date, 9, 10)
+T_days = substring(Asia$trending_date, 6, 7)
+
+# Counts
+NoT = to_vec(for(i in Asia$tags) nchar(split(i, '|')))
+NoC = to_vec(for(i in Asia$title) nchar(gsub(' ', '', i)))
+NoW = to_vec(for(i in Asia$title) nchar(split(i, ' ')))
+```
+
+```{r}
+#Finding relationships between variables
+# Plot on category distribution
+qplot(y=category, data = Asia, geom = 'bar') 
+# Plot on views distribution
+qplot(views, data = Asia, bins = 100)
+# Plot on likes distribution
+qplot(likes, data = Asia, bins = 100)
+# Plot on dislikes distribution
+qplot(dislikes, data = Asia, bins = 100)
+# Plot on comment_count distribution
+qplot(comment_count, data = Asia, bins = 100)
+# Plot on Number of Character distribution
+qplot(NoC, data = Asia, bins = 210)
+# Plot on Number of Words distribution
+qplot(NoW, data = Asia, bins = 230)
+# Plot on Number of Tags distribution
+qplot(NoT, data = Asia, bins = 100)
+```
+
+```{r}
+# Number of words vs views# Plot on category vs views based on ratings disabled or not
+qplot(y = category, x = views, data = Asia, geom = 'auto', color = ratings_disabled)
+# Plot on category vs views based on ratings disabled or not
+qplot(likes, views, data = Asia, geom ='auto', color = video_error_or_removed)
+qplot(comment_count, views, data = Asia, geom = c('smooth','auto'))
+qplot(likes, views, data = Asia, geom ='auto', color = category)
+qplot(comment_count, likes, data = Asia, geom =c('smooth','auto'))
+qplot(comment_count, dislikes, data = Asia, geom =c('smooth','auto'))
+```
+
+```{r}
+qplot(y = category, data = Asia, geom  = 'bar', fill= substring(trending_date, 1, 4), position = "dodge")
+```
+
+```{r}
+# Relationship btween Trending months and other variables
+qplot(T_months)
+qplot(T_months, Asia$views)
+qplot(T_months, Asia$likes)
+qplot(T_months, Asia$comment_count)
+qplot(T_months, NoC)
+qplot(T_months, NoT)
+qplot(T_months, NoW)
+
+# Relationship between Trending years and other variables
+qplot(T_years)
+qplot(T_years, Asia$views)
+qplot(T_years, Asia$likes)
+qplot(T_years, Asia$comment_count)
+qplot(T_years, NoC)
+qplot(T_years, NoT)
+qplot(T_years, NoW)
+
+# Relationship between Trending days and other variables
+qplot(T_days)
+qplot(T_days, Asia$views)
+qplot(T_days, Asia$likes)
+qplot(T_days, Asia$comment_count)
+qplot(T_days, NoC)
+qplot(T_days, NoT)
+qplot(T_days, NoW)
+```
+
+```{r}
+# Relationship between Publish days and other variables
+qplot(P_days)
+qplot(P_days, Asia$views)
+qplot(P_days, Asia$likes)
+qplot(P_days, Asia$comment_count)
+qplot(P_days, NoC)
+qplot(P_days, NoT)
+qplot(P_days, NoW)
+
+# Relationship between Publish years and other variables
+qplot(P_years)
+qplot(P_years, Asia$views)
+qplot(P_years, Asia$likes)
+qplot(P_years, Asia$comment_count)
+qplot(P_years, NoC)
+qplot(P_years, NoT)
+qplot(P_years, NoW)
+
+# Relationship between Publish months and other variables
+qplot(P_months)
+qplot(P_months, Asia$views)
+qplot(P_months, Asia$likes)
+qplot(P_months, Asia$comment_count)
+qplot(P_months, NoC)
+qplot(P_months, NoT)
+qplot(P_months, NoW)
+```
+
+```{r}
+# Number of Tags vs number of words
+qplot(NoW, NoT, data = Asia, geom = c('smooth','auto'))
+```
+
+```{r}
+qplot(P_days,T_days)
+qplot(P_months,T_months)
+qplot(P_years,T_years)
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
+```{r}
+
+```
+
